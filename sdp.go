@@ -357,15 +357,19 @@ func addSenderSDP(
 		}
 
 		sendParameters := sender.GetParameters()
-		for _, encoding := range sendParameters.Encodings {
-			media = media.WithMediaSource(uint32(encoding.SSRC), track.StreamID() /* cname */, track.StreamID() /* streamLabel */, track.ID())
-			if !isPlanB {
-				media = media.WithPropertyAttribute("msid:" + track.StreamID() + " " + track.ID())
-			}
+		numEncodings := len(sendParameters.Encodings)
+		// If we have at least one add the msid
+		if numEncodings >= 1 && !isPlanB {
+			media = media.WithPropertyAttribute("msid:" + track.StreamID() + " " + track.ID())
 		}
-
-		if len(sendParameters.Encodings) > 1 {
-			sendRids := make([]string, 0, len(sendParameters.Encodings))
+		// If we only have 1 encoding Add SSRC attributes
+		if numEncodings == 1 {
+			ssrc := uint32(sendParameters.Encodings[0].SSRC)
+			media = media.WithMediaSource(ssrc, track.StreamID() /* cname */, track.StreamID() /* streamLabel */, track.ID())
+		}
+		// Add Simulcast Attributes
+		if numEncodings > 1 {
+			sendRids := make([]string, 0, numEncodings)
 
 			for _, encoding := range sendParameters.Encodings {
 				media.WithValueAttribute(sdpAttributeRid, encoding.RID+" send")
